@@ -1,0 +1,72 @@
+== Test script to show that lib::abs does not work with symlinks
+
+There is a great perl module lib::abs:
+
+https://metacpan.org/module/lib::abs
+https://github.com/Mons/lib-abs
+
+But it does not work properly with symlinks. I hope that it can be fixed.
+
+Here is the steps to reproduce the error.
+
+    $ git clone https://github.com/bessarabov/lib-abs-symlink-problem.git
+    $ cd lib-abs-symlink-problem
+    $ cp -r script/ app/
+
+The file structure will be:
+
+    $ tree
+    .
+    |-- app
+    |   |-- lib
+    |   |   |-- b
+    |   |   |   `-- Bar.pm
+    |   |   `-- Foo.pm
+    |   `-- script
+    |       |-- both.pl
+    |       |-- lib-b-bar.pl
+    |       `-- lib-foo.pl
+    `-- script
+        |-- both.pl
+        |-- lib-b-bar.pl
+        `-- lib-foo.pl
+
+In this case the script works as expected:
+
+    $ cd app/script/
+    $ ./both.pl
+    Foo
+    Bar
+    $ ./lib-foo.pl
+    Foo
+    $ ./lib-b-bar.pl
+    Bar
+
+But if there is a simlink the script does not work:
+
+    $ rm -rf app/script/
+    $ ln -s ~/sample/script/ app/
+    $ tree
+    .
+    |-- app
+    |   |-- lib
+    |   |   |-- b
+    |   |   |   `-- Bar.pm
+    |   |   `-- Foo.pm
+    |   `-- script -> /home/bessarabov/sample/script/
+    `-- script
+        |-- both.pl
+        |-- lib-b-bar.pl
+        `-- lib-foo.pl
+
+    $ ./both.pl
+    Bad path specification: `../lib/b' => `/home/bessarabov/sample/script/../lib/b' (No such file or directory) at ./both.pl line 5
+    BEGIN failed--compilation aborted at ./both.pl line 5.
+
+    $ ./lib-foo.pl
+    Can't locate Foo.pm in @INC (@INC contains: /home/bessarabov/sample/lib /etc/perl /usr/local/lib/perl/5.10.1 /usr/local/share/perl/5.10.1 /usr/lib/perl5 /usr/share/perl5 /usr/lib/perl/5.10 /usr/share/perl/5.10 /usr/local/lib/site_perl .) at ./lib-foo.pl line 6.
+    BEGIN failed--compilation aborted at ./lib-foo.pl line 6.
+
+    $ ./lib-b-bar.pl
+    Bad path specification: `../lib/b' => `/home/bessarabov/sample/script/../lib/b' (No such file or directory) at ./lib-b-bar.pl line 5
+    BEGIN failed--compilation aborted at ./lib-b-bar.pl line 5.
